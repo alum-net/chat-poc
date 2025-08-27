@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Chat POC</title>
+</head>
+<body style="font-family: system-ui; max-width: 720px; margin: 2rem auto;">
+<h2>Chat POC</h2>
+
+<label>Conversation ID:
+    <input id="conv" value="demo">
+</label>
+
+<div id="log" style="border:1px solid #ddd; height:300px; overflow:auto; margin:12px 0; padding:8px"></div>
+
+<input id="text" placeholder="Mensaje..." style="width:80%">
+<button id="send">Enviar</button>
+
+<!-- Dependencias -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<script>
+    const log = (m) => {
+      const d = document.getElementById('log');
+      d.innerHTML += m + "<br>";
+      d.scrollTop = d.scrollHeight;
+    };
+
+    let client, sub;
+
+    function connect() {
+      const conv = document.getElementById('conv').value;
+
+      // Desconectar si ya estaba conectado
+      if (client) { sub && sub.unsubscribe(); client.disconnect(() => {}); }
+
+      // Crear conexión STOMP sobre SockJS
+      client = Stomp.over(new SockJS('/ws'));
+      client.connect({}, () => {
+        sub = client.subscribe(`/topic/conversations/${conv}`, msg => {
+          const m = JSON.parse(msg.body);
+          log(`<b>${m.sender}</b>: ${m.content} <small>${new Date(m.ts).toLocaleTimeString()}</small>`);
+        });
+        log("Conectado a conv: " + conv);
+      });
+    }
+
+    connect(); // conectar por defecto al cargar
+    document.getElementById('conv').addEventListener('change', connect);
+
+    document.getElementById('send').onclick = () => {
+      const conv = document.getElementById('conv').value;
+      const text = document.getElementById('text').value.trim();
+      if (!text) return;
+
+      client.send(`/app/conversations/${conv}/send`, {}, JSON.stringify({
+        clientId: crypto.randomUUID(),
+        sender: "web",
+        content: text
+      }));
+
+      document.getElementById('text').value = "";
+    };
+</script>
+</body>
+</html>
