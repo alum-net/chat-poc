@@ -1,5 +1,5 @@
-import { Client } from '@stomp/stompjs';
-import type { IMessage, StompSubscription } from '@stomp/stompjs';
+import { Client } from '@stomp/stompjs'
+import type { IMessage, StompSubscription } from '@stomp/stompjs'
 
 const WS_URL = import.meta.env.VITE_WS_URL as string
 
@@ -13,14 +13,29 @@ export function createStompClient() {
   })
 
   const api = {
+
     activate: () => client.activate(),
     deactivate: () => client.deactivate(),
     onConnect: (fn: () => void) => { client.onConnect = fn },
+
     subscribe: (destination: string, handler: (msg: IMessage) => void): StompSubscription =>
       client.subscribe(destination, handler),
+
     publish: (destination: string, body: string) =>
       client.publish({ destination, body }),
-    get connected() { return client.connected }
+
+    subscribeTyping: (conversationId: string, handler: (users: string[]) => void): StompSubscription =>
+      client.subscribe(`/topic/conversations/${conversationId}/typing`, (frame) => {
+        handler(JSON.parse(frame.body) as string[])
+      }),
+
+      publishTyping: (conversationId: string, user: string, typing = true) =>
+      client.publish({
+        destination: `/app/conversations/${conversationId}/typing`,
+        body: JSON.stringify({ user, typing }),
+      }),
+
+    get connected() { return client.connected },
   }
 
   return api
