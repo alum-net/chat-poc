@@ -82,12 +82,18 @@ export default function App() {
     }
   }, [convId])
 
+  const [nick, setNick] = useState(
+    () => localStorage.getItem('nick') || 'user-' + Math.random().toString(36).slice(2, 6)
+  );
+  useEffect(() => { localStorage.setItem('nick', nick); }, [nick]);
+
+
   const send = () => {
     const client = clientRef.current
     if (!client || !client.connected) return
     const payload = {
       clientId: crypto.randomUUID(),
-      sender: 'react',
+      sender: nick,  
       content: text.trim(),
     }
     if (!payload.content) return
@@ -102,11 +108,11 @@ const sendTyping = () => {
   if (now - lastTypingRef.current < 1000) return; 
   lastTypingRef.current = now;
 
-  clientRef.current?.publishTyping(convId, 'react', true);
+  clientRef.current?.publishTyping(convId, nick, true);
 
   if (stopTimerRef.current) window.clearTimeout(stopTimerRef.current);
   stopTimerRef.current = window.setTimeout(() => {
-    clientRef.current?.publishTyping(convId, 'react', false);
+    clientRef.current?.publishTyping(convId, nick, false);
   }, 2000);
 };
 
@@ -117,6 +123,10 @@ const sendTyping = () => {
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <label>Conversation:&nbsp;</label>
         <input value={convId} onChange={e => setConvId(e.target.value)} />
+
+        <label style={{ marginLeft: 12 }}>Nick:&nbsp;</label>
+        <input value={nick} onChange={e => setNick(e.target.value)} />
+
         <button onClick={() => loadHistory(nextCursor!)} disabled={!nextCursor}>
           Load older
         </button>
